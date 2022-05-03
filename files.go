@@ -16,6 +16,7 @@ type Recipe struct {
 	Name         string       `json:"name"`
 	Ingredients  []Ingredient `json:"ingredients"`
 	Instructions string       `json:"instructions"`
+	Empty        bool
 }
 
 func getRecipes() ([]Recipe, error) {

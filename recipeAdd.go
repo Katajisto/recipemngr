@@ -19,9 +19,26 @@ import (
 // AdderState contains all the state that the add recipe view needs, and also
 // implements methods for resetting the state and rendering it.
 type AdderState struct {
-	Name         string
-	Ingredients  []Ingredient
-	Instructions string
+	Name          string
+	Ingredients   []Ingredient
+	CurIngredient Ingredient
+	Instructions  string
+}
+
+func (i Ingredient) Render() g.Widget {
+	return g.Row(
+		g.Label(i.Name),
+		g.Label(fmt.Sprintf("%v", i.Amount)),
+	)
+}
+
+func RenderIngredients(list []Ingredient) g.Widget {
+	var ingredientWidgets []g.Widget
+	for _, i := range list {
+		ingredientWidgets = append(ingredientWidgets, i.Render())
+	}
+
+	return g.Column(ingredientWidgets...)
 }
 
 // Reset makes state empty and ready for another add.
@@ -55,7 +72,7 @@ func (as *AdderState) AddRecipe(state *State) {
 			return
 		}
 
-		jsondata, err := json.Marshal(recipeToAdd)
+		jsondata, err := json.MarshalIndent(recipeToAdd, "", "   ")
 		if err != nil {
 			g.Msgbox("Error!", fmt.Sprintf("Error saving your recipe: %v", err))
 			return
@@ -95,7 +112,16 @@ func (as *AdderState) AddRecipe(state *State) {
 func (as *AdderState) RenderAdder(state *State) g.Widget {
 	return g.Column(
 		g.Style().SetFontSize(40).To(g.Label("Add recipe").Wrapped(true)),
-		g.InputText(&as.Name),
+		g.InputText(&as.Name).Hint("Recipe name"),
+		RenderIngredients(as.Ingredients),
+		g.Row(
+			g.InputText(&as.CurIngredient.Name).Size(320).Hint("Ingredient name"),
+			g.InputFloat(&as.CurIngredient.Amount).Size(100),
+			g.Button("Add").Size(84, 20).OnClick(func() {
+				as.Ingredients = append(as.Ingredients, as.CurIngredient)
+				as.CurIngredient = Ingredient{}
+			}),
+		),
 		g.InputTextMultiline(&as.Instructions),
 		g.Button("Submit").OnClick(func() { as.AddRecipe(state) }),
 	)

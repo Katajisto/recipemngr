@@ -1,34 +1,10 @@
 package main
 
 import (
-	"log"
 	"strings"
 
 	g "github.com/AllenDang/giu"
 )
-
-func (state *State) onRecipeSelect(selectedIndex int) {
-	state.SelectedRecipe = selectedIndex
-	state.CurView = "recipe"
-}
-
-func (state *State) curRecipe() *Recipe {
-	return &state.Recipes[state.SelectedRecipe]
-}
-
-func (state *State) getMainView() g.Widget {
-	switch {
-	case state.CurView == "recipe" || state.CurView == "":
-		return g.Column(
-			g.Style().SetFontSize(50).To(g.Label(state.Recipes[state.SelectedRecipe].Name).Wrapped(true)),
-			g.Label(state.curRecipe().Instructions).Wrapped(true),
-		)
-	case state.CurView == "add":
-		return state.addRecipeState.RenderAdder(state)
-	}
-
-	return g.Label("")
-}
 
 func getLoop(state *State) func() {
 	return func() {
@@ -43,35 +19,36 @@ func getLoop(state *State) func() {
 		}
 
 		g.SingleWindow().Layout(
-
-			g.Row(
+			g.TabBar().TabItems(g.TabItem("Recipes").Layout(g.Row(
 				g.Column(
 					g.InputText(&state.CurFilter).Hint("What do you seek?").Size(200),
-					g.ListBox("RecipeBox", recipeNames).OnChange(state.onRecipeSelect).Size(200, 420),
+					g.ListBox("RecipeBox", recipeNames).OnChange(state.onRecipeSelect).Size(200, 400),
 					g.Button("+ Add recipe").OnClick(func() {
 						state.addRecipeState.Reset()
 						state.CurView = "add"
 					}),
 				),
 				state.getMainView(),
-			),
+			)), g.TabItem("Plan").Layout(
+				state.MealPlannerState.Render(),
+			)),
 			g.PrepareMsgbox(), // Just a slot/prep for displaying message boxes later in the app.
 		)
 	}
 }
 
-type State struct {
-	addRecipeState AdderState
-	Recipes        []Recipe
-	SelectedRecipe int
-	CurFilter      string
-	CurView        string
-}
+// GLOBAL_STATE_PTR is meant to reduce dumb state pointer passing in functions.
+var GLOBAL_STATE_PTR *State
 
 func main() {
 	var AppState State
+	GLOBAL_STATE_PTR = &AppState
 	recipes, err := getRecipes()
-	log.Println(recipes, err)
+
+	if err != nil {
+		panic(err)
+	}
+
 	AppState.Recipes = recipes
 
 	wnd := g.NewMasterWindow("Recipe Manager - 0.2", 800, 500, g.MasterWindowFlagsNotResizable)
